@@ -85,14 +85,14 @@ public class ExpensesController : ControllerBase
         return CreatedAtAction(nameof(GetAll), new { message = "Expense added successfully" });
     }
 
-    [HttpPut("{id}")]
+    [HttpPut("update-expense/{id}")]
     public async Task<IActionResult> UpdateExpense(int id, [FromBody] ExpenseDto expenseDto)
     {
         await _expenseService.UpdateExpense(id, expenseDto);
         return Ok("Expense updated successfully");
     }
 
-    [HttpDelete("{id}")]
+    [HttpDelete("delete-expense/{id}")]
     public async Task<IActionResult> DeleteExpense(int id)
     {
         await _expenseService.DeleteExpense(id);
