@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using System;
+using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
 [Route("api/[controller]")]
@@ -11,21 +12,71 @@ public class ExpensesController : ControllerBase
         _expenseService = expenseService;
     }
 
-    [HttpGet]
+    [HttpGet("get-all-expenses")]
     public async Task<IActionResult> GetAll()
     {
         return Ok(await _expenseService.GetAllExpenses());
     }
 
-    [HttpGet("{id}")]
-    public async Task<IActionResult> GetById(int id)
+    //GET /api/expenses/get-by-date/2024-03-07
+    [HttpGet("get-by-date/{dateString}")]
+    public async Task<IActionResult> GetByDate(string dateString)
     {
-        var expense = await _expenseService.GetExpenseById(id);
+        if (!DateTime.TryParse(dateString, out DateTime date))
+            return BadRequest("Invalid date format. Use YYYY-MM-DD.");
+
+        var expense = await _expenseService.GetExpenseByDate(date);
         if (expense == null) 
             return NotFound("Expense not found");
 
         return Ok(expense);
     }
+
+    //GET /api/expenses/get-by-date-range?startDate=2024-03-01&endDate=2024-03-07
+    [HttpGet("get-by-date-range")]
+    public async Task<IActionResult> GetByDateRange([FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+    {
+        if (startDate == default || endDate == default)
+            return BadRequest("Invalid date range. Please provide both startDate and endDate in YYYY-MM-DD format.");
+
+        var expenses = await _expenseService.GetExpensesByDateRange(startDate, endDate);
+
+        if (!expenses.Any())
+            return NotFound("No expenses found in the given date range.");
+
+        return Ok(expenses);
+    }
+
+    //GET /api/expenses/get-by-category/2
+    [HttpGet("get-by-category/{categoryId}")]
+    public async Task<IActionResult> GetByCategory(int categoryId)
+    {
+        if (categoryId <= 0)
+            return BadRequest("Invalid category ID. It must be greater than 0.");
+
+        var expenses = await _expenseService.GetExpensesByCategory(categoryId);
+
+        if (!expenses.Any())
+            return NotFound($"No expenses found for category ID {categoryId}.");
+
+        return Ok(expenses);
+    }
+
+    //GET /api/expenses/get-by-amount-range?minAmount=100&maxAmount=1000
+    [HttpGet("get-by-amount-range")]
+    public async Task<IActionResult> GetByAmountRange([FromQuery] decimal minAmount, [FromQuery] decimal maxAmount)
+    {
+        if (minAmount < 0 || maxAmount <= 0 || minAmount > maxAmount)
+            return BadRequest("Invalid amount range. Ensure minAmount >= 0, maxAmount > 0, and minAmount <= maxAmount.");
+
+        var expenses = await _expenseService.GetExpensesByAmountRange(minAmount, maxAmount);
+
+        if (!expenses.Any())
+            return NotFound($"No expenses found in the amount range ₹{minAmount} - ₹{maxAmount}.");
+
+        return Ok(expenses);
+    }
+
 
     [HttpPost]
     public async Task<IActionResult> AddExpense([FromBody] ExpenseDto expenseDto)

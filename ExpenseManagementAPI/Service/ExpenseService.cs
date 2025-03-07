@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using System.Linq;
+using Microsoft.EntityFrameworkCore;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public class ExpenseService : IExpenseService
 {
@@ -9,43 +11,97 @@ public class ExpenseService : IExpenseService
         _context = context;
     }
 
-    // Get all expenses with category names
+    // Get all expenses 
     public async Task<IEnumerable<ExpenseResponseDto>> GetAllExpenses()
     {
         return await _context.Expenses
-            //.Include(e => e.Category)
+        .Include(e => e.Category) // Ensure Category data is loaded
+        .Select(e => new ExpenseResponseDto
+        {
+            ID = e.ID,
+            Amount = e.Amount,
+            Description = e.Description,
+            Date = e.Date,
+            CategoryId = e.CategoryId,
+            CategoryName = e.Category.Name
+        })
+        .ToListAsync();
+
+    }
+
+    // Get expense by Date
+    public async Task<IEnumerable<ExpenseResponseDto>> GetExpenseByDate(DateTime date)
+    {
+        return await _context.Expenses
+              .Where(e => e.Date == date)
+              .Include(e => e.Category)
+              .Select(e => new ExpenseResponseDto
+              {
+                  ID = e.ID,
+                  //Name = e.Name,
+                  Amount = e.Amount,
+                  Description = e.Description,
+                  Date = e.Date,
+                  CategoryName = e.Category.Name
+              })
+              .ToListAsync();
+    }
+
+    // Get Expenses by Date Range
+    public async Task<IEnumerable<ExpenseResponseDto>> GetExpensesByDateRange(DateTime startDate, DateTime endDate)
+    {
+        return await _context.Expenses
+              .Where(e => e.Date >= startDate && e.Date <= endDate)
+              .Include(e => e.Category)
+              .Select(e => new ExpenseResponseDto
+              {
+                  ID = e.ID,
+                  //Name = e.Name,
+                  Amount = e.Amount,
+                  Description = e.Description,
+                  Date = e.Date,
+                  CategoryName = e.Category.Name
+              })
+              .ToListAsync();
+    }
+
+    // Get All expenses by category
+    public async Task<IEnumerable<ExpenseResponseDto>> GetExpensesByCategory(int categoryId)
+    {
+        return await _context.Expenses
+            .Where(e => e.CategoryId == categoryId)
+            .Include(e => e.Category)
             .Select(e => new ExpenseResponseDto
             {
                 ID = e.ID,
-                UserID = e.UserID,
+                //Name = e.Name,
                 Amount = e.Amount,
-                CategoryName = e.Category.Name,
                 Description = e.Description,
-                Date = e.Date
+                Date = e.Date,
+                CategoryName = e.Category.Name
             })
             .ToListAsync();
     }
 
-    // Get expense by ID
-    public async Task<ExpenseResponseDto> GetExpenseById(int id)
+    // Get Expenses by Amount Range
+    public async Task<IEnumerable<ExpenseResponseDto>> GetExpensesByAmountRange(decimal minAmount, decimal maxAmount)
     {
-        var expense = await _context.Expenses
-            //.Include(e => e.Category)
-            .FirstOrDefaultAsync(e => e.ID == id);
-
-        if (expense == null)
-            throw new Exception("Expense not found");
-
-        return new ExpenseResponseDto
-        {
-            ID = expense.ID,
-            UserID = expense.UserID,
-            Amount = expense.Amount,
-            CategoryName = expense.Category.Name,
-            Description = expense.Description,
-            Date = expense.Date
-        };
+        return await _context.Expenses
+            .Where(e => e.Amount >= minAmount && e.Amount <= maxAmount)
+            .OrderBy(e => e.Amount)
+            .Include(e => e.Category)
+            .Select(e => new ExpenseResponseDto
+            {
+                ID = e.ID,
+                //Name = e.Name,
+                Amount = e.Amount,
+                Description = e.Description,
+                Date = e.Date,
+                CategoryName = e.Category.Name
+            })
+            .ToListAsync();
     }
+
 
     // Add new expense
     public async Task AddExpense(ExpenseDto expenseDto)
@@ -57,11 +113,11 @@ public class ExpenseService : IExpenseService
 
         var expense = new Expense
         {
+            Name= expenseDto.Name,
             Amount = expenseDto.Amount,
             CategoryId = expenseDto.CategoryId,
-            Category =  await _context.Categories.FindAsync(expenseDto.CategoryId),
             Description = expenseDto.Description,
-            Date = expenseDto.Date
+            Date = expenseDto.Date,
         };
 
         await _context.Expenses.AddAsync(expense);
